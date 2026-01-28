@@ -1,0 +1,168 @@
+"""CLI simples para experimentar um agente de IA local."""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import logging
+import os
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Iterable, List
+DEFAULT_SYSTEM_PROMPT = (
+    "Você é um agente de IA de laboratório. "
+    "Responda em português de forma clara e objetiva. "
+    "Se o pedido não estiver claro, faça uma pergunta curta para esclarecer."
+)
+
+
+@dataclass
+class AgentConfig:
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    max_history: int = 8
+
+
+@dataclass
+class AgentMemory:
+    items: List[str] = field(default_factory=list)
+    def add(self, message: str, max_history: int) -> None:
+        self.items.append(message)
+        if len(self.items) > max_history:
+            self.items = self.items[-max_history:]
+
+    def as_text(self) -> str:
+        if not self.items:
+            return "(sem histórico)"
+        return "\n".join(self.items)
+
+
+class SimpleAgent:
+    def __init__(self, config: AgentConfig, memory: AgentMemory) -> None:
+        self.config = config
+        self.memory = memory
+
+    def respond(self, user_message: str) -> str:
+        normalized = user_message.strip().lower()
+        if not normalized:
+            return "Pode repetir? Não encontrei nenhuma mensagem válida."
+
+        if "ajuda" in normalized or "help" in normalized:
+            return (
+                "Posso responder perguntas simples, resumir ideias ou listar próximos passos. "
+                "Exemplo: 'resuma o experimento 01'."
+            )
+
+        if "resuma" in normalized and "experimento" in normalized:
+            return (
+                "O experimento 01 descreve o que é um agente, exemplos de uso, "
+                "lacunas do projeto e um plano de implementação MVP → v1."
+            )
+
+        if "próximos passos" in normalized or "proximos passos" in normalized:
+            return (
+                "Sugiro definir o propósito do agente, criar um protótipo simples, "
+                "escolher uma interface e implementar entrada/saída." 
+            )
+
+        return (
+            "Entendi. Posso ajudar com um resumo, plano de ação ou organização de ideias. "
+            "O que você quer fazer a seguir?"
+        )
+
+
+def build_logger(log_path: Path) -> logging.Logger:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("agent")
+    logger.setLevel(logging.INFO)
+
+    handler = logging.FileHandler(log_path)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S")
+    )
+    if not logger.handlers:
+        logger.addHandler(handler)
+
+    return logger
+
+
+def read_prompt_file(prompt_path: Path) -> str:
+    if not prompt_path.exists():
+        return DEFAULT_SYSTEM_PROMPT
+    return prompt_path.read_text(encoding="utf-8").strip() or DEFAULT_SYSTEM_PROMPT
+
+
+def interactive_loop(agent: SimpleAgent, logger: logging.Logger) -> None:
+    print("Agente iniciado. Digite 'sair' para encerrar.\n")
+    while True:
+        try:
+            user_message = input("> ")
+        except EOFError:
+            print("\nEncerrando.")
+            break
+
+        if user_message.strip().lower() in {"sair", "exit", "quit"}:
+            print("Até mais!")
+            break
+
+        response = agent.respond(user_message)
+        timestamp = dt.datetime.now().isoformat(timespec="seconds")
+        logger.info("user=%s", user_message)
+        logger.info("assistant=%s", response)
+        agent.memory.add(f"{timestamp} user: {user_message}", agent.config.max_history)
+        agent.memory.add(f"{timestamp} assistant: {response}", agent.config.max_history)
+        print(response)
+
+
+def parse_args(argv: Iterable[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="CLI simples para um agente de IA.")
+    parser.add_argument(
+        "--prompt-file",
+        default="docs/agent_prompt.md",
+        help="Arquivo com o prompt de sistema (default: docs/agent_prompt.md).",
+    )
+    parser.add_argument(
+        "--message",
+        help="Mensagem única para obter resposta (modo não interativo).",
+   )
+    parser.add_argument(
+        "--max-history",
+        type=int,
+        default=8,
+        help="Número máximo de linhas de histórico em memória.",
+    )
+    parser.add_argument(
+        "--show-history",
+        action="store_true",
+        help="Exibe o histórico armazenado após responder.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Iterable[str]) -> int:
+    args = parse_args(argv)
+    prompt_path = Path(args.prompt_file)
+    config = AgentConfig(system_prompt=read_prompt_file(prompt_path), max_history=args.max_history)
+    memory = AgentMemory()
+    agent = SimpleAgent(config, memory)
+
+    log_path = Path(os.environ.get("AGENT_LOG", "logs/agent.log"))
+    logger = build_logger(log_path)
+    logger.info("agent_start prompt_file=%s", prompt_path)
+
+    if args.message:
+        response = agent.respond(args.message)
+        logger.info("user=%s", args.message)
+        logger.info("assistant=%s", response)
+        timestamp = dt.datetime.now().isoformat(timespec="seconds")
+        agent.memory.add(f"{timestamp} user: {args.message}", agent.config.max_history)
+        agent.memory.add(f"{timestamp} assistant: {response}", agent.config.max_history)
+        print(response)
+        if args.show_history:
+            print("\nHistórico:\n" + agent.memory.as_text())
+        return 0
+
+    interactive_loop(agent, logger)
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
