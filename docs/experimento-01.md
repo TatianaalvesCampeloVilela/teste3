@@ -23,3 +23,23 @@ Um agente de inteligência artificial é um software que recebe um objetivo, obs
 - Implementar entrada e saída de dados (ex.: API REST ou chat).
 - Adicionar integrações necessárias (ex.: buscas, banco de dados, arquivos).
 - Testar com usuários e refinar o comportamento.
+
+## Plano de implementação incremental (MVP → v1)
+### MVP (prova de valor em execução)
+1.**Escopo mínimo**: documentar objetivo, limites e casos de uso iniciais.
+2. **Modelo e prompt base**: integrar um LLM e definir instruções de sistema.
+3. **Interface simples**: CLI ou endpoint único que receba entrada e devolva resposta.
+4. **Ciclo de execução**: fluxo básico de entrada → prompt → resposta.
+5. **Observabilidade mínima**: logs de entrada, saída e erros.
+6. **Checklist de validação**: 3–5 cenários de teste manuais com critérios claros.
+
+### v1 (produto inicial utilizável)
+1. **Memória de sessão**: persistir histórico curto para manter contexto.
+2. **Ferramentas externas**: ao menos uma integração útil (busca, arquivos ou DB).
+3. **Políticas de segurança**: regras claras de recusa e limites de atuação.
+4. **Interface estável**: API simples ou UI leve para uso consistente.
+5. **Métricas básicas**: sucesso das tarefas, tempo de resposta, taxa de falhas.
+6. **Teste com usuários**: feedback rápido e ajustes no comportamento.
+ 
+EOF
+)
