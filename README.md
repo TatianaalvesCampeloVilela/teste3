@@ -51,5 +51,4 @@ python agent.py --message "resuma o experimento 01"
 
 Logs são gravados em `logs/agent.log` (pode ser alterado via `AGENT_LOG`).
  
-EOF
-)
+EOF)
