@@ -1,4 +1,4 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+(cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/experimento-01.md b/experimento-01.md
 new file mode 100644
 index 0000000000000000000000000000000000000000..69402dc61215099d6395ffa367e55f86fd59e844
